@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Get current directory
+current_dir=$(pwd)
+
+# Check if current directory is already in PATH
+if [[ ":$PATH:" != *":$current_dir:"* ]]; then
+
+  # Add current directory to PATH in ~/.bashrc
+  echo "export PATH=\$PATH:$current_dir" >> ~/.bashrc
+  echo "Added $current_dir to PATH in ~/.bashrc"
+
+  # Source ~/.bashrc to apply changes immediately
+  source ~/.bashrc
+else
+  echo "$current_dir is already in PATH in ~/.bashrc"
+fi
+
