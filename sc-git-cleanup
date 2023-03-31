@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Fetch the latest changes from upstream and prune deleted branches
+echo "Fetching latest changes from upstream..."
+git fetch --prune
+
+# Get the name of the current branch
+current_branch="$(git symbolic-ref --short HEAD)"
+
+# Delete all local branches that no longer exist in upstream, except the current branch
+echo "Deleting local branches that no longer exist in upstream..."
+branches_to_delete=$(git branch -vv | grep ': gone]' | grep -v " ${current_branch} " | awk '{print $1}')
+if [[ -n "${branches_to_delete}" ]]; then
+  echo "The following branches will be deleted:"
+  echo "${branches_to_delete}"
+  read -p "Are you sure you want to proceed? (y/n): " confirm
+  if [[ "${confirm}" == "y" || "${confirm}" == "Y" ]]; then
+    git branch -D ${branches_to_delete}
+    echo "Deleted the branches successfully."
+  else
+    echo "Aborting the cleanup process."
+  fi
+else
+  echo "No local branches to delete."
+fi
+
