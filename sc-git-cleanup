@@ -24,3 +24,19 @@ else
   echo "No local branches to delete."
 fi
 
+# Fetch and merge all remote branches
+echo "Fetching and merging all remote branches..."
+git pull --all
+
+# Delete local branches that have been deleted on the remote
+echo "Deleting local branches that have been deleted on the remote..."
+remote_branches=$(git ls-remote --heads origin | sed 's?.*refs/heads/??')
+local_branches=$(git branch --list | sed 's/^[* ]*//')
+for local_branch in $local_branches
+do
+  if ! echo "$remote_branches" | grep -q "^$local_branch$"; then
+    git branch -D "$local_branch"
+    echo "Deleted local branch $local_branch"
+  fi
+done
+
