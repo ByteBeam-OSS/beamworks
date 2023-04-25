@@ -1,0 +1,107 @@
+#!/bin/bash
+
+function warn_overwrite() {
+  echo "Warning: A name is already set in the local file 'name.txt'."
+  echo "The provided parameter will overwrite the existing name."
+  echo "Press Ctrl+C to cancel or Enter to continue."
+  read -r
+}
+
+function display_help() {
+  echo "Usage: $0 [OPTIONS]"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help         Show this help message and exit"
+  echo "  -p, --push         Optionally push the image to the registry"
+  echo "  -l, --latest       Additionally tag the image as 'latest'"
+  echo "  -n, --name NAME    The name to be used for the Docker image (optional)"
+}
+
+# Parse flags and parameters
+PUSH=false
+TAG_LATEST=false
+NAME_PARAM=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      display_help
+      exit 0
+      ;;
+    -p|--push)
+      PUSH=true
+      shift
+      ;;
+    -l|--latest)
+      TAG_LATEST=true
+      shift
+      ;;
+    -n|--name)
+      if [ -n "$2" ]; then
+        NAME_PARAM="$2"
+        shift 2
+      else
+        echo "Error: Missing argument for --name."
+        display_help
+        exit 1
+      fi
+      ;;
+    *)
+      echo "Error: Invalid usage."
+      display_help
+      exit 1
+      ;;
+  esac
+done
+
+# Check if the local file 'name.txt' exists
+if [ -f name.txt ]; then
+  # Read the name from the local file
+  NAME=$(cat name.txt)
+  
+  # If a parameter is provided, warn about overwriting the name
+  if [ -n "$NAME_PARAM" ]; then
+    warn_overwrite
+    NAME=$NAME_PARAM
+    echo "$NAME" > name.txt
+  fi
+else
+  # If a parameter is provided, use it as the name and save it to the local file
+  if [ -n "$NAME_PARAM" ]; then
+    NAME=$NAME_PARAM
+    echo "$NAME" > name.txt
+  else
+    # If no parameter is provided and no local file exists, use the directory name
+    NAME=$(basename "$(pwd)")
+    echo "$NAME" > name.txt
+  fi
+fi
+
+# Read the current version number from the version.txt file
+VERSION=$(cat version.txt)
+
+# Increment the version number
+VERSION=$((VERSION + 1))
+
+# Save the updated version number back to the version.txt file
+echo $VERSION > version.txt
+
+# Get the current date and time in the specified format
+TIMESTAMP=$(date +'%d-%m-%Y_%H%M_%Z')
+
+# Build the Docker image with the specified naming convention
+docker build -t legacy-registry.sexycoders.org/${NAME}:v${VERSION}_${TIMESTAMP} .
+
+# Tag the image as 'latest' if required
+if [ "$TAG_LATEST" = true ]; then
+  docker tag legacy-registry.sexycoders.org/${NAME}:v${VERSION}_${TIMESTAMP} legacy-registry.sexycoders.org/${NAME}:latest
+fi
+
+# Optionally, push the image(s) to the registry if required
+if [ "$PUSH" = true ]; then
+  docker push legacy-registry.sexycoders.org/${NAME}:v${VERSION}_${TIMESTAMP}
+  if [ "$TAG_LATEST" = true ]; then
+    docker push legacy-registry.sexycoders.org/${NAME}:latest
+  fi
+fi
+
