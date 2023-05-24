@@ -1,0 +1,153 @@
+#!/bin/bash
+
+function warn_overwrite() {
+  echo "Warning: A version is already set in the local file 'lasttag.txt'."
+  echo "The provided parameter will overwrite the existing version."
+  echo "Press Ctrl+C to cancel or Enter to continue."
+  read -r
+}
+
+function warn_overwrite_identifier() {
+  echo "Warning: A release identifier is already set in the local file 'release_identifier.txt'."
+  echo "The provided parameter will overwrite the existing identifier."
+  echo "Press Ctrl+C to cancel or Enter to continue."
+  read -r
+}
+
+function display_help() {
+  echo "Usage: $0 [OPTIONS]"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help              Show this help message and exit"
+  echo "  -a, --alpha             Set the release identifier as 'alpha'"
+  echo "  -b, --beta              Set the release identifier as 'beta'"
+  echo "  -o, --official          Set the release identifier as 'official'"
+  echo "  -n, --version-number    The version number to be used for the Git tag (optional)"
+  echo "  -p, --push              Push the tag to the remote repository after creation"
+}
+
+# Get the root directory of the Git repository
+GIT_ROOT=$(git rev-parse --show-toplevel)
+
+# Parse flags and parameters
+RELEASE_IDENTIFIER=""
+VERSION_PARAM=""
+PUSH=false
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      display_help
+      exit 0
+      ;;
+    -a|--alpha)
+      RELEASE_IDENTIFIER="alpha"
+      shift
+      ;;
+    -b|--beta)
+      RELEASE_IDENTIFIER="beta"
+      shift
+      ;;
+    -o|--official)
+      RELEASE_IDENTIFIER="official"
+      shift
+      ;;
+    -n|--version-number)
+      if [ -n "$2" ]; then
+        VERSION_PARAM="$2"
+        shift 2
+      else
+        echo "Error: Missing argument for --version-number."
+        display_help
+        exit 1
+      fi
+      ;;
+    -p|--push)
+      PUSH=true
+      shift
+      ;;
+    *)
+      echo "Error: Invalid usage."
+      display_help
+      exit 1
+      ;;
+  esac
+done
+
+# Check if the local file 'lasttag.txt' exists
+if [ -f $GIT_ROOT/lasttag.txt ]; then
+  # Read the version number from the local file
+  VERSION=$(cat $GIT_ROOT/lasttag.txt)
+  
+  # If a parameter is provided, warn about overwriting the version number
+  if [ -n "$VERSION_PARAM" ]; then
+    warn_overwrite
+    VERSION=$VERSION_PARAM
+    echo "$VERSION" > $GIT_ROOT/lasttag.txt
+  fi
+else
+  # If a parameter is provided, use it as the version number and save it to the local file
+  if [ -n "$VERSION_PARAM" ]; then
+    VERSION=$VERSION_PARAM
+    echo "$VERSION" > $GIT_ROOT/lasttag.txt
+  else
+    # If no parameter is provided and no local file exists, start from 1
+    VERSION=1
+    echo "$VERSION" > $GIT_ROOT/lasttag.txt
+  fi
+fi
+
+# Check if the local file 'release_identifier.txt' exists
+if [ -f $GIT_ROOT/release_identifier.txt ]; then
+  # Read the release identifier from the local file
+  CURRENT_IDENTIFIER=$(cat $GIT_ROOT/release_identifier.txt)
+
+  if [ -z "$RELEASE_IDENTIFIER" ]; then
+    RELEASE_IDENTIFIER=$CURRENT_IDENTIFIER
+  elif [ "$CURRENT_IDENTIFIER" != "$RELEASE_IDENTIFIER" ] && [ "$RELEASE_IDENTIFIER" != "debug" ]; then
+    if [ "$CURRENT_IDENTIFIER" == "alpha" ] && [ "$RELEASE_IDENTIFIER" == "beta" ] || [ "$RELEASE_IDENTIFIER" == "official" ]; then
+      warn_overwrite_identifier
+      echo "$RELEASE_IDENTIFIER" > $GIT_ROOT/release_identifier.txt
+    else
+      echo "Error: Invalid transition of release identifier."
+      exit 1
+    fi
+  fi
+else
+  # If a parameter is provided, use it as the release identifier and save it to the local file
+  if [ -n "$RELEASE_IDENTIFIER" ]; then
+    echo "$RELEASE_IDENTIFIER" > $GIT_ROOT/release_identifier.txt
+  else
+    # If no parameter is provided and no local file exists, use 'debug' as default
+    RELEASE_IDENTIFIER="debug"
+  fi
+fi
+
+# Get the current date and time in the specified format
+TIMESTAMP=$(date +'%d-%m-%Y_%H%M_%Z')
+
+# Create the base tag
+TAG="$TIMESTAMP-$VERSION"
+
+# Append release identifier if set
+if [ -n "$RELEASE_IDENTIFIER" ]; then
+  TAG="$TAG-$RELEASE_IDENTIFIER"
+fi
+
+# Fetch latest from origin
+git fetch origin
+
+# Checkout master branch
+git checkout master
+
+# Pull latest from master
+git pull origin master
+
+# Create new tag based on master
+git tag $TAG
+
+# Optionally, push the tag to remote repository if required
+if [ "$PUSH" = true ]; then
+  git push origin $TAG
+fi
+
