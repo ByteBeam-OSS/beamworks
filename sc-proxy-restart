@@ -1,0 +1,4 @@
+#!/bin/bash
+
+docker stack rm proxy;
+docker stack deploy --compose-file /store/sc-source/source/sys/proxy/proxy.yml proxy && echo "DONE!";
