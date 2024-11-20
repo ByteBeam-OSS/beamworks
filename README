@@ -1,0 +1,45 @@
+beamworks
+=========
+
+beamworks is a collection of helper scripts and utilities designed to 
+simplify and automate repetitive tasks for developers. It includes tools 
+for Git versioning and tagging, Docker image management, automation, and 
+other development-related workflows.
+
+Brought to you by ByteBeam Limited (BBL). Yes, we know what you're 
+thinking, and yes, the name was chosen on purpose. 
+
+Features
+--------
+
+- Version and tag management for Git repositories.
+- Docker build and tag utilities.
+- Automation scripts for repetitive tasks.
+- Miscellaneous tools for everyday development needs.
+
+Requirements
+------------
+
+- bash
+- git
+- docker (for Docker-specific tools)
+
+Installation
+------------
+
+Clone the repository and make the scripts executable:
+
+    git clone https://github.com/bytebeam-oss/beamworks.git
+    cd beamworks
+    make && make install
+
+Usage
+-----
+
+Each script in beamworks is documented internally. Run any script with 
+`--help` for detailed usage information.
+
+Example:
+
+    bbl-git-tag --help
+
